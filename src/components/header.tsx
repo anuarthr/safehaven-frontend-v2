@@ -8,7 +8,7 @@ import { useAuth } from "../contexts/authcontext";
 
 function Header() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { usuario, logout } = useAuth();
 
   const handleHomeClick = () => {
     navigate("/");
@@ -17,12 +17,12 @@ function Header() {
   const [contenido, setContenido] = useState(<></>);
 
   const handleLoginClick = () => {
-    if (!user) {
+    if (!usuario) {
       navigate("/login");
     } else {
       setContenido(
         <Dropdown.Menu>
-          {user ? (
+          {usuario ? (
             <Dropdown.Item onClick={handleLogout}>Cerrar sesión</Dropdown.Item>
           ) : null}
         </Dropdown.Menu>
@@ -32,7 +32,7 @@ function Header() {
   const handleLogout = () => {
     logout();
     navigate("/login");
-    setContenido(<></>)
+    setContenido(<></>);
   };
 
   const margin = {
@@ -89,8 +89,8 @@ function Header() {
                   Servicios
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
-                  <Dropdown.Item href="#/action-1">Citas</Dropdown.Item>
-                  <Dropdown.Item href="#/action-2">
+                  <Dropdown.Item onClick={() => navigate('/citas')}>Citas</Dropdown.Item>
+                  <Dropdown.Item onClick={() => navigate('/cursos')}>
                     Cursos de salud mental
                   </Dropdown.Item>
                 </Dropdown.Menu>
@@ -104,13 +104,13 @@ function Header() {
                   Relevante
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
-                  <Dropdown.Item onClick={() => navigate("/psicologos")}>
-                    Psicologos
+                  <Dropdown.Item onClick={() => navigate('/psicologos')}>
+                    Psicólogos
                   </Dropdown.Item>
-                  <Dropdown.Item href="#/action-2">
+                  <Dropdown.Item onClick={() => navigate('/sesiones')}>
                     Nuestras sesiones
                   </Dropdown.Item>
-                  <Dropdown.Item href="#/action-3">
+                  <Dropdown.Item onClick={() => navigate('/acompanamiento')}>
                     Servicio de acompañamiento
                   </Dropdown.Item>
                 </Dropdown.Menu>
@@ -124,8 +124,8 @@ function Header() {
                   Sobre nosotros
                 </Dropdown.Toggle>
                 <Dropdown.Menu>
-                  <Dropdown.Item href="#/action-1">Mision</Dropdown.Item>
-                  <Dropdown.Item href="#/action-2">Contacto</Dropdown.Item>
+                  <Dropdown.Item onClick={() => navigate('/mision')}>Misión</Dropdown.Item>
+                  <Dropdown.Item onClick={() => navigate('/contacto')}>Contacto</Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown>
 
@@ -142,7 +142,7 @@ function Header() {
                   }}
                 >
                   <span onClick={handleLoginClick}>
-                    {user ? `Hola, ${user.nombre}` : "Iniciar sesión"}
+                    {usuario ? `Hola, ${usuario.nombre}` : "Iniciar sesión"}
                   </span>
                 </Dropdown.Toggle>
                 <div id="CloseSession">{contenido}</div>

@@ -1,48 +1,49 @@
-import { createContext, useContext, useState, ReactNode } from "react";
-
-interface User {
-  password: string;
-  aseguradora: string;
-  sexo: string;
-  telefono: string;
-  fechaDeNacimiento: string;
-  correoElectronico: string;
-  apellido: string;
-  id: number;
-  nombre: string;
-}
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import type { UsuarioSesion } from '../types';
 
 interface AuthContextType {
-  user: User | null;
-  login: (userData: User) => void;
+  usuario: UsuarioSesion | null;
+  login: (userData: UsuarioSesion) => void;
   logout: () => void;
+  isAuthenticated: boolean;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth debe usarse dentro de un AuthProvider');
   }
   return context;
 };
 
+const getUsuarioFromStorage = (): UsuarioSesion | null => {
+  try {
+    const raw = localStorage.getItem('usuario');
+    return raw ? (JSON.parse(raw) as UsuarioSesion) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(JSON.parse(localStorage.getItem("user") || "null"));
-  const login = (userData: User) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
+  const [usuario, setUsuario] = useState<UsuarioSesion | null>(getUsuarioFromStorage);
+
+  const login = (userData: UsuarioSesion) => {
+    localStorage.setItem('usuario', JSON.stringify(userData));
+    setUsuario(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem("user");
-    setUser(null);
+    localStorage.removeItem('usuario');
+    setUsuario(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ usuario, login, logout, isAuthenticated: !!usuario }}>
       {children}
     </AuthContext.Provider>
   );
 };
+
