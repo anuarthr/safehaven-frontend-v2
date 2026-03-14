@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Container, Modal, Table, Form, Row, Col } from 'react-bootstrap';
+import { Calendar } from 'primereact/calendar';
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import {
   usePacientes,
@@ -10,7 +11,6 @@ import {
   useUpdatePaciente,
   useDeletePaciente,
 } from '../../hooks/usePacientes';
-import { useRoles } from '../../hooks/useRoles';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 import ConfirmModal from '../../components/ui/ConfirmModal';
@@ -30,11 +30,24 @@ const schema = z.object({
   aseguradora: z.string().min(1, 'Requerido'),
   estadoDeSalud: z.string().min(1, 'Requerido'),
   fechaDeRegistro: z.string().min(1, 'Requerido'),
-  rol: z.number({ error: 'Seleccione un rol' }).min(1, 'Requerido'),
   password: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
+
+const toYMD = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const fromYMD = (value?: string): Date | null => {
+  if (!value) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  if ([y, m, d].some((n) => Number.isNaN(n))) return null;
+  return new Date(y, m - 1, d);
+};
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -51,9 +64,8 @@ interface PacienteFormProps {
 }
 
 const PacienteForm = ({ modo, valores, onSubmit, cargando, onCancelar }: PacienteFormProps) => {
-  const { data: roles } = useRoles();
-
   const {
+    control,
     register,
     handleSubmit,
     setError,
@@ -66,7 +78,7 @@ const PacienteForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Pacient
           fechaDeRegistro: valores.fechaDeRegistro?.split('T')[0] ?? '',
           fechaDeNacimiento: valores.fechaDeNacimiento?.split('T')[0] ?? '',
         }
-      : { estadoDeSalud: 'Saludable', fechaDeRegistro: new Date().toISOString().split('T')[0], rol: 4 },
+      : { estadoDeSalud: 'Saludable', fechaDeRegistro: new Date().toISOString().split('T')[0] },
   });
 
   const handleFormSubmit = (values: FormValues) => {
@@ -76,10 +88,10 @@ const PacienteForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Pacient
         return;
       }
       const { password, ...rest } = values;
-      onSubmit({ ...rest, password } as RegistroPacienteDto);
+      onSubmit({ ...rest, rol: 4, password } as RegistroPacienteDto);
     } else {
       const { password: _pw, ...rest } = values;
-      onSubmit(rest as ActualizarPacienteDto);
+      onSubmit({ ...rest, rol: valores?.rol ?? 4 } as ActualizarPacienteDto);
     }
   };
 
@@ -135,12 +147,50 @@ const PacienteForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Pacient
       <Row>
         <Col md={6}>
           <FormField label="Fecha de nacimiento" error={errors.fechaDeNacimiento}>
-            <Form.Control type="date" isInvalid={!!errors.fechaDeNacimiento} {...register('fechaDeNacimiento')} />
+            <Controller
+              control={control}
+              name="fechaDeNacimiento"
+              render={({ field }) => (
+                <Calendar
+                  value={fromYMD(field.value)}
+                  onChange={(e) => {
+                    const date = e.value instanceof Date ? e.value : null;
+                    field.onChange(date ? toYMD(date) : '');
+                  }}
+                  dateFormat="dd/mm/yy"
+                  placeholder="Selecciona fecha"
+                  maxDate={new Date()}
+                  className={errors.fechaDeNacimiento ? 'p-invalid w-100' : 'w-100'}
+                  inputClassName="form-control"
+                  showIcon
+                  showButtonBar
+                />
+              )}
+            />
           </FormField>
         </Col>
         <Col md={6}>
           <FormField label="Fecha de registro" error={errors.fechaDeRegistro}>
-            <Form.Control type="date" isInvalid={!!errors.fechaDeRegistro} {...register('fechaDeRegistro')} />
+            <Controller
+              control={control}
+              name="fechaDeRegistro"
+              render={({ field }) => (
+                <Calendar
+                  value={fromYMD(field.value)}
+                  onChange={(e) => {
+                    const date = e.value instanceof Date ? e.value : null;
+                    field.onChange(date ? toYMD(date) : '');
+                  }}
+                  dateFormat="dd/mm/yy"
+                  placeholder="Selecciona fecha"
+                  maxDate={new Date()}
+                  className={errors.fechaDeRegistro ? 'p-invalid w-100' : 'w-100'}
+                  inputClassName="form-control"
+                  showIcon
+                  showButtonBar
+                />
+              )}
+            />
           </FormField>
         </Col>
       </Row>
@@ -156,14 +206,6 @@ const PacienteForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Pacient
           </FormField>
         </Col>
       </Row>
-      <FormField label="Rol" error={errors.rol}>
-        <Form.Select isInvalid={!!errors.rol} {...register('rol', { valueAsNumber: true })}>
-          <option value="">Seleccione un rol...</option>
-          {roles?.map((r) => (
-            <option key={r.id} value={r.id}>{r.nombre}</option>
-          ))}
-        </Form.Select>
-      </FormField>
       <div className="d-flex justify-content-end gap-2 mt-3">
         <Button variant="secondary" onClick={onCancelar} disabled={cargando}>Cancelar</Button>
         <Button type="submit" variant="primary" disabled={cargando}>
@@ -178,7 +220,6 @@ const PacienteForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Pacient
 
 const PacientesPage = () => {
   const { data: pacientes, isLoading, isError, error } = usePacientes();
-  const { data: roles } = useRoles();
   const crear = useCreatePaciente();
   const actualizar = useUpdatePaciente();
   const eliminar = useDeletePaciente();
@@ -205,8 +246,6 @@ const PacientesPage = () => {
       eliminar.mutate(idEliminar, { onSuccess: () => setIdEliminar(null) });
     }
   };
-
-  const rolNombre = (id: number) => roles?.find((r) => r.id === id)?.nombre ?? `Rol ${id}`;
 
   if (isLoading) return <Spinner />;
   if (isError) return <div className="alert alert-danger m-4">{(error as Error).message}</div>;
@@ -235,7 +274,6 @@ const PacientesPage = () => {
                 <th>Teléfono</th>
                 <th>Aseguradora</th>
                 <th>Estado de salud</th>
-                <th>Rol</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -249,7 +287,6 @@ const PacientesPage = () => {
                   <td>{p.telefono}</td>
                   <td>{p.aseguradora}</td>
                   <td>{p.estadoDeSalud}</td>
-                  <td>{rolNombre(p.rol)}</td>
                   <td>
                     <Button
                       variant="outline-warning"

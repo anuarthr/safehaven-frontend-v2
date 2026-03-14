@@ -1,7 +1,8 @@
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Form, Button, Row, Col } from 'react-bootstrap';
+import { Calendar } from 'primereact/calendar';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -17,6 +18,20 @@ const calcularEdad = (fechaNacimiento: string): number => {
   const mes = hoy.getMonth() - nacimiento.getMonth();
   if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
   return edad;
+};
+
+const toYMD = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const fromYMD = (value?: string): Date | null => {
+  if (!value) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  if ([y, m, d].some((n) => Number.isNaN(n))) return null;
+  return new Date(y, m - 1, d);
 };
 
 const schema = z.object({
@@ -36,6 +51,7 @@ const SignUpPage = () => {
   const navigate = useNavigate();
 
   const {
+    control,
     register,
     handleSubmit,
     formState: { errors },
@@ -110,10 +126,25 @@ const SignUpPage = () => {
           <Row>
             <Col md={6}>
               <FormField label="Fecha de nacimiento" error={errors.fechaDeNacimiento}>
-                <Form.Control
-                  type="date"
-                  isInvalid={!!errors.fechaDeNacimiento}
-                  {...register('fechaDeNacimiento')}
+                <Controller
+                  control={control}
+                  name="fechaDeNacimiento"
+                  render={({ field }) => (
+                    <Calendar
+                      value={fromYMD(field.value)}
+                      onChange={(e) => {
+                        const date = e.value instanceof Date ? e.value : null;
+                        field.onChange(date ? toYMD(date) : '');
+                      }}
+                      dateFormat="dd/mm/yy"
+                      placeholder="Selecciona fecha"
+                      maxDate={new Date()}
+                      className={errors.fechaDeNacimiento ? 'p-invalid w-100' : 'w-100'}
+                      inputClassName="form-control"
+                      showIcon
+                      showButtonBar
+                    />
+                  )}
                 />
               </FormField>
             </Col>
