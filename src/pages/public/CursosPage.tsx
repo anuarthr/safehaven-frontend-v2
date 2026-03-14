@@ -1,6 +1,7 @@
 import { Container, Row, Col, Card, Badge, Button } from 'react-bootstrap';
 import { BookOpen, Clock, Users, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/authcontext';
 
 const cursos = [
   {
@@ -61,6 +62,15 @@ const cursos = [
 
 const CursosPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  const handleInscripcion = (curso: string) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    navigate(`/citas?crear=1&tipo=Virtual&motivo=${encodeURIComponent(`Curso: ${curso}`)}`);
+  };
 
   return (
     <Container className="py-5">
@@ -110,7 +120,7 @@ const CursosPage = () => {
                   variant={`outline-${curso.color}`}
                   size="sm"
                   className="w-100"
-                  onClick={() => navigate('/login')}
+                  onClick={() => handleInscripcion(curso.titulo)}
                 >
                   Inscribirme
                 </Button>

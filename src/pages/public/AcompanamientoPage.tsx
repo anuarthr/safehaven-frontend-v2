@@ -1,6 +1,7 @@
 import { Container, Row, Col, Card, Button, ListGroup } from 'react-bootstrap';
 import { Heart, ShieldCheck, Phone, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/authcontext';
 
 const caracteristicas = [
   {
@@ -40,6 +41,15 @@ const paraQuien = [
 
 const AcompanamientoPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  const handleSolicitar = () => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    navigate('/citas?crear=1&tipo=Virtual&motivo=Servicio%20de%20acompanamiento');
+  };
 
   return (
     <Container className="py-5">
@@ -72,7 +82,7 @@ const AcompanamientoPage = () => {
             un espacio de sostén donde puedes compartir tus avances, dificultades y
             dudas sin esperar a la próxima cita.
           </p>
-          <Button variant="primary" onClick={() => navigate('/registro')}>
+          <Button variant="primary" onClick={handleSolicitar}>
             Solicitar acompañamiento
           </Button>
         </Col>
@@ -132,7 +142,7 @@ const AcompanamientoPage = () => {
           </Col>
         </Row>
         <div className="text-center mt-4">
-          <Button variant="primary" size="lg" onClick={() => navigate('/registro')}>
+          <Button variant="primary" size="lg" onClick={handleSolicitar}>
             Quiero comenzar
           </Button>
         </div>

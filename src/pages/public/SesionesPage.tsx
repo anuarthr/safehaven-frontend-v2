@@ -1,6 +1,7 @@
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { Video, MapPin, Users, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/authcontext';
 
 const tipos = [
   {
@@ -55,6 +56,16 @@ const tipos = [
 
 const SesionesPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  const handleAgendar = (titulo: string) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    const tipo = titulo.includes('Virtual') ? 'Virtual' : 'Presencial';
+    navigate(`/citas?crear=1&tipo=${tipo}&motivo=${encodeURIComponent(titulo)}`);
+  };
 
   return (
     <Container className="py-5">
@@ -96,7 +107,7 @@ const SesionesPage = () => {
                   variant={`outline-${t.color}`}
                   size="sm"
                   className="w-100"
-                  onClick={() => navigate('/registro')}
+                  onClick={() => handleAgendar(t.titulo)}
                 >
                   Agendar
                 </Button>
@@ -127,7 +138,7 @@ const SesionesPage = () => {
             </Col>
           ))}
         </Row>
-        <Button variant="primary" className="mt-4" onClick={() => navigate('/registro')}>
+        <Button variant="primary" className="mt-4" onClick={() => handleAgendar('Consulta de orientación')}>
           Comenzar ahora
         </Button>
       </div>
