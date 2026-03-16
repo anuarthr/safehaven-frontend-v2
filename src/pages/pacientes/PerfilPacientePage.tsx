@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Container, Form, Row, Col, Badge, Card } from 'react-bootstrap';
+import { Calendar } from 'primereact/calendar';
 import { User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { usePaciente, useUpdatePaciente } from '../../hooks/usePacientes';
 import { useAuth } from '../../contexts/authcontext';
 import Spinner from '../../components/ui/Spinner';
@@ -25,15 +27,31 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+const toYMD = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const fromYMD = (value?: string): Date | null => {
+  if (!value) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  if ([y, m, d].some((n) => Number.isNaN(n))) return null;
+  return new Date(y, m - 1, d);
+};
+
 // ── Página ────────────────────────────────────────────────────────────────────
 
 const PerfilPacientePage = () => {
+  const navigate = useNavigate();
   const { usuario } = useAuth();
   const id = usuario?.id ?? 0;
   const { data: paciente, isLoading, isError, error } = usePaciente(id);
   const actualizar = useUpdatePaciente();
 
   const {
+    control,
     register,
     handleSubmit,
     reset,
@@ -76,14 +94,27 @@ const PerfilPacientePage = () => {
   if (!paciente) return null;
 
   return (
-    <Container className="py-4" style={{ maxWidth: 720 }}>
-      <div className="d-flex align-items-center gap-3 mb-4">
-        <div className="bg-primary bg-opacity-10 rounded-circle p-3">
-          <User size={32} className="text-primary" />
-        </div>
-        <div>
-          <h2 className="mb-0">{paciente.nombre} {paciente.apellido}</h2>
-          <p className="text-muted mb-0 small">{paciente.correoElectronico}</p>
+    <Container className="py-4" style={{ maxWidth: 860 }}>
+      <div className="position-relative mb-4" style={{ minHeight: 56 }}>
+        <Button
+          variant="outline-secondary"
+          size="sm"
+          className="position-absolute start-0 top-50 translate-middle-y w-auto float-none px-3"
+          onClick={() => navigate('/dashboard')}
+        >
+          Volver
+        </Button>
+
+        <div className="d-flex justify-content-center">
+          <Card className="border-0 shadow-sm" style={{ width: '100%', maxWidth: 520 }}>
+            <Card.Body className="d-flex flex-column align-items-center text-center py-4">
+              <div className="bg-primary bg-opacity-10 rounded-circle p-3 mb-2">
+                <User size={32} className="text-primary" />
+              </div>
+              <h2 className="mb-1">{paciente.nombre} {paciente.apellido}</h2>
+              <p className="text-muted mb-0 small">{paciente.correoElectronico}</p>
+            </Card.Body>
+          </Card>
         </div>
       </div>
 
@@ -159,10 +190,25 @@ const PerfilPacientePage = () => {
             <Row>
               <Col md={6}>
                 <FormField label="Fecha de nacimiento" error={errors.fechaDeNacimiento}>
-                  <Form.Control
-                    type="date"
-                    isInvalid={!!errors.fechaDeNacimiento}
-                    {...register('fechaDeNacimiento')}
+                  <Controller
+                    control={control}
+                    name="fechaDeNacimiento"
+                    render={({ field }) => (
+                      <Calendar
+                        value={fromYMD(field.value)}
+                        onChange={(e) => {
+                          const date = e.value instanceof Date ? e.value : null;
+                          field.onChange(date ? toYMD(date) : '');
+                        }}
+                        dateFormat="dd/mm/yy"
+                        placeholder="Selecciona fecha"
+                        maxDate={new Date()}
+                        className={errors.fechaDeNacimiento ? 'p-invalid w-100' : 'w-100'}
+                        inputClassName="form-control"
+                        showIcon
+                        showButtonBar
+                      />
+                    )}
                   />
                 </FormField>
               </Col>

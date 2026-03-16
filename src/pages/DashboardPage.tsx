@@ -5,23 +5,15 @@ import { useAuth } from '../contexts/authcontext';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const { usuario, logout } = useAuth();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  const { usuario } = useAuth();
 
   return (
     <Container className="py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="mb-4">
         <div>
           <h2 className="mb-1">Bienvenido, {usuario?.nombre} {usuario?.apellido}</h2>
           <p className="text-muted mb-0">{usuario?.correoElectronico}</p>
         </div>
-        <Button variant="outline-danger" onClick={handleLogout}>
-          Cerrar sesión
-        </Button>
       </div>
 
       <Row className="g-4">

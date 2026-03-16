@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button, Container, Modal, Table, Form, Row, Col } from 'react-bootstrap';
+import { Button, Container, Modal, Table, Form, Row, Col, Card } from 'react-bootstrap';
+import { Calendar } from 'primereact/calendar';
 import { Pencil, Trash2, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/authcontext';
 import {
   usePsicologos,
@@ -32,11 +34,24 @@ const schema = z.object({
   especialidad: z.string().min(1, 'Requerido'),
   anosDeExperiencia: z.number({ error: 'Debe ser un número' }).min(0),
   horarioDeAtencion: z.string().min(1, 'Requerido'),
-  rol: z.number({ error: 'Seleccione un rol' }).min(1, 'Requerido'),
 });
 
 type FormValues = z.infer<typeof schema>;
 type Modo = 'crear' | 'editar';
+
+const toYMD = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const fromYMD = (value?: string): Date | null => {
+  if (!value) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  if ([y, m, d].some((n) => Number.isNaN(n))) return null;
+  return new Date(y, m - 1, d);
+};
 
 // ── Formulario ────────────────────────────────────────────────────────────────
 
@@ -49,9 +64,8 @@ interface PsicologoFormProps {
 }
 
 const PsicologoForm = ({ modo, valores, onSubmit, cargando, onCancelar }: PsicologoFormProps) => {
-  const { data: roles } = useRoles();
-
   const {
+    control,
     register,
     handleSubmit,
     setError,
@@ -60,7 +74,7 @@ const PsicologoForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Psicol
     resolver: zodResolver(schema),
     defaultValues: valores
       ? { ...valores, fechaDeNacimiento: valores.fechaDeNacimiento?.split('T')[0] ?? '' }
-      : { rol: 2 },
+      : undefined,
   });
 
   const handleFormSubmit = (values: FormValues) => {
@@ -70,10 +84,10 @@ const PsicologoForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Psicol
         return;
       }
       const { password, ...rest } = values;
-      onSubmit({ ...rest, password } as RegistroPsicologoDto);
+      onSubmit({ ...rest, rol: 2, password } as RegistroPsicologoDto);
     } else {
       const { password: _pw, ...rest } = values;
-      onSubmit(rest as ActualizarPsicologoDto);
+      onSubmit({ ...rest, rol: valores?.rol ?? 2 } as ActualizarPsicologoDto);
     }
   };
 
@@ -131,7 +145,26 @@ const PsicologoForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Psicol
       <Row>
         <Col md={6}>
           <FormField label="Fecha de nacimiento" error={e.fechaDeNacimiento}>
-            <Form.Control type="date" isInvalid={!!e.fechaDeNacimiento} {...register('fechaDeNacimiento')} />
+            <Controller
+              control={control}
+              name="fechaDeNacimiento"
+              render={({ field }) => (
+                <Calendar
+                  value={fromYMD(field.value)}
+                  onChange={(e) => {
+                    const date = e.value instanceof Date ? e.value : null;
+                    field.onChange(date ? toYMD(date) : '');
+                  }}
+                  dateFormat="dd/mm/yy"
+                  placeholder="Selecciona fecha"
+                  maxDate={new Date()}
+                  className={e.fechaDeNacimiento ? 'p-invalid w-100' : 'w-100'}
+                  inputClassName="form-control"
+                  showIcon
+                  showButtonBar
+                />
+              )}
+            />
           </FormField>
         </Col>
         <Col md={6}>
@@ -152,14 +185,6 @@ const PsicologoForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Psicol
           </FormField>
         </Col>
       </Row>
-      <FormField label="Rol" error={e.rol}>
-        <Form.Select isInvalid={!!e.rol} {...register('rol', { valueAsNumber: true })}>
-          <option value="">Seleccione un rol...</option>
-          {roles?.map((r) => (
-            <option key={r.id} value={r.id}>{r.nombre}</option>
-          ))}
-        </Form.Select>
-      </FormField>
       <div className="d-flex justify-content-end gap-2 mt-3">
         <Button variant="secondary" onClick={onCancelar} disabled={cargando}>Cancelar</Button>
         <Button type="submit" variant="primary" disabled={cargando}>
@@ -173,10 +198,15 @@ const PsicologoForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Psicol
 // ── Página principal ──────────────────────────────────────────────────────────
 
 const PsicologosPage = () => {
+  const navigate = useNavigate();
   const { data: psicologos, isLoading, isError, error } = usePsicologos();
   const { data: roles } = useRoles();
   const { usuario } = useAuth();
-  const esPaciente = usuario?.rol === 4;
+  const nombreRolUsuario = roles
+    ?.find((r) => r.id === usuario?.rol)
+    ?.nombre?.toLowerCase();
+  const esAdministrador = (nombreRolUsuario?.includes('admin') ?? false) || usuario?.rol === 1;
+  const rutaVolver = usuario?.rol === 4 ? '/dashboard' : '/dashboard-psicologo';
 
   const crear = useCreatePsicologo();
   const actualizar = useUpdatePsicologo();
@@ -205,29 +235,45 @@ const PsicologosPage = () => {
     }
   };
 
-  const rolNombre = (id: number) => roles?.find((r) => r.id === id)?.nombre ?? `Rol ${id}`;
-
   if (isLoading) return <Spinner />;
   if (isError) return <div className="alert alert-danger m-4">{(error as Error).message}</div>;
 
   return (
     <Container className="py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="mb-0">Psicólogos</h2>
-        {!esPaciente && (
-          <Button variant="primary" onClick={abrirCrear}>
-            <Plus size={16} className="me-2" />
-            Nuevo psicólogo
+      <Row className="align-items-center g-2 mb-4">
+        <Col xs={12} md={4} className="d-flex justify-content-start">
+          <Button
+            variant="outline-secondary"
+            size="sm"
+            className="w-auto float-none px-3"
+            onClick={() => navigate(rutaVolver)}
+          >
+            Volver
           </Button>
-        )}
-      </div>
+        </Col>
+
+        <Col xs={12} md={4} className="text-center">
+          <h2 className="mb-0">Psicólogos</h2>
+        </Col>
+
+        <Col xs={12} md={4} className="d-flex justify-content-center justify-content-md-end">
+          {esAdministrador && (
+            <Button variant="primary" className="w-auto float-none" onClick={abrirCrear}>
+              <Plus size={16} className="me-2" />
+              Nuevo psicólogo
+            </Button>
+          )}
+        </Col>
+      </Row>
 
       {!psicologos?.length ? (
         <EmptyState mensaje="No hay psicólogos registrados." />
       ) : (
-        <div className="table-responsive">
-          <Table striped bordered hover>
-            <thead className="table-dark">
+        <Card className="border-0 shadow-sm">
+          <Card.Body className="p-0">
+            <div className="table-responsive">
+              <Table striped hover className="mb-0 align-middle">
+                <thead className="table-light">
               <tr>
                 <th>ID</th>
                 <th>Nombre</th>
@@ -236,22 +282,20 @@ const PsicologosPage = () => {
                 <th>Especialidad</th>
                 <th>Experiencia</th>
                 <th>Horario</th>
-                {!esPaciente && <th>Rol</th>}
-                {!esPaciente && <th>Acciones</th>}
+                {esAdministrador && <th>Acciones</th>}
               </tr>
-            </thead>
-            <tbody>
+                </thead>
+                <tbody>
               {psicologos.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.id}</td>
+                  <td className="fw-semibold">#{p.id}</td>
                   <td>{p.nombre}</td>
                   <td>{p.apellido}</td>
                   <td>{p.correoElectronico}</td>
                   <td>{p.especialidad}</td>
                   <td>{p.anosDeExperiencia} años</td>
                   <td>{p.horarioDeAtencion}</td>
-                  {!esPaciente && <td>{rolNombre(p.rol)}</td>}
-                  {!esPaciente && (
+                  {esAdministrador && (
                     <td>
                       <Button variant="outline-warning" size="sm" className="me-2" onClick={() => abrirEditar(p)}>
                         <Pencil size={14} />
@@ -263,12 +307,14 @@ const PsicologosPage = () => {
                   )}
                 </tr>
               ))}
-            </tbody>
-          </Table>
-        </div>
+                </tbody>
+              </Table>
+            </div>
+          </Card.Body>
+        </Card>
       )}
 
-      {!esPaciente && (
+      {esAdministrador && (
         <>
           <Modal show={modalAbierto} onHide={cerrarModal} size="lg" centered>
             <Modal.Header closeButton>

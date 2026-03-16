@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, Container, Modal, Table, Form, Row, Col } from 'react-bootstrap';
+import { Calendar } from 'primereact/calendar';
 import { Pencil, Trash2, Plus } from 'lucide-react';
 import {
   useAdministradores,
@@ -33,6 +34,20 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 type Modo = 'crear' | 'editar';
 
+const toYMD = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const fromYMD = (value?: string): Date | null => {
+  if (!value) return null;
+  const [y, m, d] = value.split('-').map(Number);
+  if ([y, m, d].some((n) => Number.isNaN(n))) return null;
+  return new Date(y, m - 1, d);
+};
+
 interface AdminFormProps {
   modo: Modo;
   valores?: Administrador;
@@ -45,6 +60,7 @@ const AdminForm = ({ modo, valores, onSubmit, cargando, onCancelar }: AdminFormP
   const { data: roles } = useRoles();
 
   const {
+    control,
     register,
     handleSubmit,
     setError,
@@ -124,7 +140,26 @@ const AdminForm = ({ modo, valores, onSubmit, cargando, onCancelar }: AdminFormP
       <Row>
         <Col md={6}>
           <FormField label="Fecha de nacimiento" error={e.fechaDeNacimiento}>
-            <Form.Control type="date" isInvalid={!!e.fechaDeNacimiento} {...register('fechaDeNacimiento')} />
+            <Controller
+              control={control}
+              name="fechaDeNacimiento"
+              render={({ field }) => (
+                <Calendar
+                  value={fromYMD(field.value)}
+                  onChange={(e) => {
+                    const date = e.value instanceof Date ? e.value : null;
+                    field.onChange(date ? toYMD(date) : '');
+                  }}
+                  dateFormat="dd/mm/yy"
+                  placeholder="Selecciona fecha"
+                  maxDate={new Date()}
+                  className={e.fechaDeNacimiento ? 'p-invalid w-100' : 'w-100'}
+                  inputClassName="form-control"
+                  showIcon
+                  showButtonBar
+                />
+              )}
+            />
           </FormField>
         </Col>
         <Col md={6}>
