@@ -1,9 +1,11 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-import type { UsuarioSesion } from '../types';
+import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
+import type { LoginResponse, UsuarioSesion } from '../types';
+import { getMe } from '../api/auth';
 
 interface AuthContextType {
   usuario: UsuarioSesion | null;
-  login: (userData: UsuarioSesion) => void;
+  isLoading: boolean;
+  login: (response: LoginResponse) => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -18,32 +20,45 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
-const getUsuarioFromStorage = (): UsuarioSesion | null => {
-  try {
-    const raw = localStorage.getItem('usuario');
-    return raw ? (JSON.parse(raw) as UsuarioSesion) : null;
-  } catch {
-    return null;
-  }
-};
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [usuario, setUsuario] = useState<UsuarioSesion | null>(getUsuarioFromStorage);
+  const [usuario, setUsuario] = useState<UsuarioSesion | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const login = (userData: UsuarioSesion) => {
-    localStorage.setItem('usuario', JSON.stringify(userData));
+  // Al montar: si hay token guardado, validarlo con /auth/me y rehydratar sesión
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
+    getMe()
+      .then(({ token: _t, ...userData }) => {
+        setUsuario(userData);
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuario');
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const login = ({ token, ...userData }: LoginResponse) => {
+    if (token) localStorage.setItem('token', token);
     setUsuario(userData);
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
     localStorage.removeItem('usuario');
     setUsuario(null);
   };
 
-  return (
-    <AuthContext.Provider value={{ usuario, login, logout, isAuthenticated: !!usuario }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({ usuario, isLoading, login, logout, isAuthenticated: !!usuario }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [usuario, isLoading],
   );
-};
 
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
