@@ -1,26 +1,28 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Suspense, lazy } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/authcontext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Header from './components/header';
 import { Footer } from './components/footer';
+import Spinner from './components/ui/Spinner';
 
-// Pages
-import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
-import DashboardPage from './pages/DashboardPage';
-import DashboardPsychologistPage from './pages/DashboardPsychologistPage';
-import PacientesPage from './pages/pacientes/PacientesPage';
-import PerfilPacientePage from './pages/pacientes/PerfilPacientePage';
-import PsicologosPage from './pages/psicologos/PsicologosPage';
-import AdministradoresPage from './pages/administradores/AdministradoresPage';
-import CitasPage from './pages/citas/CitasPage';
-import ConsultoriosPage from './pages/consultorios/ConsultoriosPage';
-import CursosPage from './pages/public/CursosPage';
-import SesionesPage from './pages/public/SesionesPage';
-import AcompanamientoPage from './pages/public/AcompanamientoPage';
-import MisionPage from './pages/public/MisionPage';
-import ContactoPage from './pages/public/ContactoPage';
+// Pages — lazy loaded por ruta para reducir el bundle inicial
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const DashboardPsychologistPage = lazy(() => import('./pages/DashboardPsychologistPage'));
+const PacientesPage = lazy(() => import('./pages/pacientes/PacientesPage'));
+const PerfilPacientePage = lazy(() => import('./pages/pacientes/PerfilPacientePage'));
+const PsicologosPage = lazy(() => import('./pages/psicologos/PsicologosPage'));
+const AdministradoresPage = lazy(() => import('./pages/administradores/AdministradoresPage'));
+const CitasPage = lazy(() => import('./pages/citas/CitasPage'));
+const ConsultoriosPage = lazy(() => import('./pages/consultorios/ConsultoriosPage'));
+const CursosPage = lazy(() => import('./pages/public/CursosPage'));
+const SesionesPage = lazy(() => import('./pages/public/SesionesPage'));
+const AcompanamientoPage = lazy(() => import('./pages/public/AcompanamientoPage'));
+const MisionPage = lazy(() => import('./pages/public/MisionPage'));
+const ContactoPage = lazy(() => import('./pages/public/ContactoPage'));
 
 function App() {
   return (
@@ -30,6 +32,7 @@ function App() {
         <div className="d-flex flex-column min-vh-100">
           <Header />
           <main className="flex-grow-1">
+            <Suspense fallback={<Spinner />}>
             <Routes>
               {/* Públicas */}
               <Route path="/login" element={<LoginPage />} />
@@ -58,6 +61,7 @@ function App() {
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
+            </Suspense>
           </main>
           <Footer />
         </div>
