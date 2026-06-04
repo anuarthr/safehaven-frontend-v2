@@ -25,7 +25,7 @@ export const useCreatePaciente = () => {
     mutationFn: (data: RegistroPacienteDto) => createPaciente(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pacientes'] });
-      toast.success('Paciente creado exitosamente');
+      toast.success('Paciente registrado exitosamente');
     },
     onError: (error: Error) => toast.error(error.message),
   });

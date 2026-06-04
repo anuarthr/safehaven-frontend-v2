@@ -91,33 +91,32 @@ const normalizarDuracion = (valor: string): string | null => {
   const input = valor.trim().toLowerCase();
   if (!input) return null;
 
+  const hhmm = (h: number, m: number): string =>
+    `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
   if (/^\d{1,2}:\d{2}:\d{2}$/.test(input)) {
     const [h, m, s] = input.split(':').map(Number);
     if (m > 59 || s > 59) return null;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    return hhmm(h, m);
   }
 
   if (/^\d{1,2}:\d{2}$/.test(input)) {
     const [h, m] = input.split(':').map(Number);
     if (m > 59) return null;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+    return hhmm(h, m);
   }
 
   if (/^\d+\s*h$/.test(input)) {
-    const horas = Number(input.replace('h', '').trim());
-    return `${String(horas).padStart(2, '0')}:00:00`;
+    return hhmm(Number(input.replace('h', '').trim()), 0);
   }
 
   if (/^\d+\s*m$/.test(input)) {
     const totalMin = Number(input.replace('m', '').trim());
-    const h = Math.floor(totalMin / 60);
-    const m = totalMin % 60;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+    return hhmm(Math.floor(totalMin / 60), totalMin % 60);
   }
 
   if (/^\d+$/.test(input)) {
-    const horas = Number(input);
-    return `${String(horas).padStart(2, '0')}:00:00`;
+    return hhmm(Number(input), 0);
   }
 
   return null;
@@ -137,12 +136,15 @@ const fromYMD = (value?: string): Date | null => {
   return new Date(y, m - 1, d);
 };
 
+const ESTADOS_CITA = ['PENDIENTE', 'CONFIRMADA', 'CANCELADA', 'COMPLETADA'] as const;
+
 const schema = z.object({
   motivo: z.string().min(1, 'Requerido'),
   duracion: z.string().min(1, 'La duración es requerida'),
   tipoCita: z.string().min(1, 'Requerido'),
   insertBy: z.string().min(1, 'Requerido'),
   updateBy: z.string(),
+  estado: z.enum(ESTADOS_CITA).optional(),
   fecha: z.string().min(1, 'Requerido'),
   hora: z.string().min(1, 'Requerido'),
   paciente: z.number({ error: 'Seleccione un paciente' }).min(1, 'Requerido'),
@@ -191,7 +193,15 @@ const CitaForm = ({
   } = useForm<CitaFormValues>({
     resolver: zodResolver(schema),
     defaultValues: valores
-      ? { ...valores, fecha: valores.fecha?.split('T')[0] ?? '' }
+      ? {
+          ...valores,
+          fecha: valores.fecha?.split('T')[0] ?? '',
+          duracion: valores.duracion ?? '',
+          tipoCita: valores.tipoCita ?? '',
+          insertBy: valores.insertBy ?? '',
+          updateBy: valores.updateBy ?? '',
+          estado: valores.estado,
+        }
       : {
           updateBy: '',
           paciente: esPaciente && pacienteId ? pacienteId : undefined,
@@ -214,6 +224,7 @@ const CitaForm = ({
     const payload: CitaDto = {
       ...values,
       duracion: duracionNormalizada,
+      estado: values.estado ?? 'PENDIENTE',
       paciente: esPaciente && pacienteId ? pacienteId : values.paciente,
       insertBy: values.insertBy || insertByDefault || '',
       updateBy: values.updateBy || '',
@@ -236,7 +247,7 @@ const CitaForm = ({
     clearErrors(['fecha', 'hora']);
 
     if (fechaSeleccionada) {
-      const dias = extraerDiasDisponibles(psicologoSeleccionado.horarioDeAtencion);
+      const dias = extraerDiasDisponibles(psicologoSeleccionado.horarioDeAtencion ?? '');
       if (dias) {
         const diaSeleccionado = new Date(`${fechaSeleccionada}T00:00:00`).getDay();
         if (!dias.has(diaSeleccionado)) {
@@ -249,7 +260,7 @@ const CitaForm = ({
     }
 
     if (horaSeleccionada) {
-      const rango = extraerRangoHoras(psicologoSeleccionado.horarioDeAtencion);
+      const rango = extraerRangoHoras(psicologoSeleccionado.horarioDeAtencion ?? '');
       const horaMin = hhmmAMinutos(horaSeleccionada);
       if (rango && horaMin !== null && (horaMin < rango.inicio || horaMin > rango.fin)) {
         setError('hora', {
@@ -269,7 +280,7 @@ const CitaForm = ({
   const esEdicion = !!valores;
 
   return (
-    <Form onSubmit={handleSubmit(handleFormSubmit)} noValidate>
+    <Form onSubmit={handleSubmit((v) => handleFormSubmit(v))} noValidate>
       <Row>
         <Col md={8}>
           <FormField label="Motivo" error={errors.motivo}>
@@ -339,6 +350,16 @@ const CitaForm = ({
           </Col>
         )}
       </Row>
+      {esEdicion && !esPaciente && (
+        <FormField label="Estado" error={errors.estado}>
+          <Form.Select {...register('estado')}>
+            <option value="PENDIENTE">Pendiente</option>
+            <option value="CONFIRMADA">Confirmada</option>
+            <option value="CANCELADA">Cancelada</option>
+            <option value="COMPLETADA">Completada</option>
+          </Form.Select>
+        </FormField>
+      )}
       <Row>
         {!esPaciente && (
           <Col md={4}>
@@ -360,7 +381,7 @@ const CitaForm = ({
                 <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
               ))}
             </Form.Select>
-            {psicologoSeleccionado && (
+            {psicologoSeleccionado?.horarioDeAtencion && (
               <Form.Text className="text-muted">
                 Disponibilidad: {psicologoSeleccionado.horarioDeAtencion}
               </Form.Text>
@@ -396,8 +417,8 @@ const CitasPage = () => {
   const { data: psicologos } = usePsicologos();
   const { data: consultorios } = useConsultorios();
   const { usuario } = useAuth();
-  const esPaciente = usuario?.rol === 4;
-  const esPsicologo = usuario?.rol === 2;
+  const esPaciente = usuario?.rol.id === 4;
+  const esPsicologo = usuario?.rol.id === 3;
   const esAdministrador = !esPaciente && !esPsicologo;
   const rutaVolver = esPaciente ? '/dashboard' : '/dashboard-psicologo';
 
@@ -511,34 +532,46 @@ const CitasPage = () => {
               <Table striped hover className="mb-0 align-middle">
                 <thead className="table-light">
                   <tr>
-                    <th>ID</th>
+                    <th className="d-none d-md-table-cell">ID</th>
                     <th>Motivo</th>
-                    <th>Tipo</th>
+                    <th className="d-none d-lg-table-cell">Tipo</th>
+                    <th>Estado</th>
                     <th>Fecha</th>
-                    <th>Hora</th>
-                    <th>Duración</th>
-                    {!esPaciente && <th>Paciente</th>}
-                    <th>Psicólogo</th>
-                    <th>Consultorio</th>
+                    <th className="d-none d-md-table-cell">Hora</th>
+                    <th className="d-none d-xl-table-cell">Duración</th>
+                    {!esPaciente && <th className="d-none d-lg-table-cell">Paciente</th>}
+                    <th className="d-none d-md-table-cell">Psicólogo</th>
+                    <th className="d-none d-xl-table-cell">Consultorio</th>
                     {esAdministrador && <th>Acciones</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {citas.map((c) => (
                     <tr key={c.id}>
-                      <td className="fw-semibold">#{c.id}</td>
+                      <td className="d-none d-md-table-cell fw-semibold">#{c.id}</td>
                       <td>{c.motivo}</td>
+                      <td className="d-none d-lg-table-cell">
+                        {c.tipoCita && (
+                          <Badge bg={c.tipoCita === 'Virtual' ? 'info' : 'primary'}>
+                            {c.tipoCita}
+                          </Badge>
+                        )}
+                      </td>
                       <td>
-                        <Badge bg={c.tipoCita === 'Virtual' ? 'info' : 'primary'}>
-                          {c.tipoCita}
+                        <Badge bg={
+                          c.estado === 'CONFIRMADA' ? 'success' :
+                          c.estado === 'CANCELADA' ? 'danger' :
+                          c.estado === 'COMPLETADA' ? 'secondary' : 'warning'
+                        }>
+                          {c.estado}
                         </Badge>
                       </td>
                       <td>{formatearFecha(c.fecha)}</td>
-                      <td>{c.hora}</td>
-                      <td>{c.duracion}</td>
-                      {!esPaciente && <td>{nombrePaciente(c.paciente)}</td>}
-                      <td>{nombrePsicologo(c.psicologo)}</td>
-                      <td>{nombreConsultorio(c.consultorio)}</td>
+                      <td className="d-none d-md-table-cell">{c.hora}</td>
+                      <td className="d-none d-xl-table-cell">{c.duracion}</td>
+                      {!esPaciente && <td className="d-none d-lg-table-cell">{nombrePaciente(c.paciente)}</td>}
+                      <td className="d-none d-md-table-cell">{nombrePsicologo(c.psicologo)}</td>
+                      <td className="d-none d-xl-table-cell">{nombreConsultorio(c.consultorio)}</td>
                       {esAdministrador && (
                         <td>
                           <Button variant="outline-warning" size="sm" className="me-2" onClick={() => abrirEditar(c)}>

@@ -68,7 +68,17 @@ const AdminForm = ({ modo, valores, onSubmit, cargando, onCancelar }: AdminFormP
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: valores
-      ? { ...valores, fechaDeNacimiento: valores.fechaDeNacimiento?.split('T')[0] ?? '' }
+      ? {
+          nombre: valores.nombre,
+          apellido: valores.apellido,
+          correoElectronico: valores.correoElectronico,
+          edad: valores.edad ?? 0,
+          telefono: valores.telefono ?? '',
+          sexo: valores.sexo ?? '',
+          fechaDeNacimiento: valores.fechaDeNacimiento?.split('T')[0] ?? '',
+          cargo: valores.cargo ?? '',
+          rol: valores.rol ?? 1,
+        }
       : { rol: 1 },
   });
 
@@ -216,7 +226,8 @@ const AdministradoresPage = () => {
     }
   };
 
-  const rolNombre = (id: number) => roles?.find((r) => r.id === id)?.nombre ?? `Rol ${id}`;
+  const rolNombre = (rolId: number | null) =>
+    rolId != null ? (roles?.find((r) => r.id === rolId)?.nombre ?? `Rol ${rolId}`) : '-';
 
   if (isLoading) return <Spinner />;
   if (isError) return <div className="alert alert-danger m-4">{(error as Error).message}</div>;
@@ -238,26 +249,26 @@ const AdministradoresPage = () => {
           <Table striped bordered hover>
             <thead className="table-dark">
               <tr>
-                <th>ID</th>
+                <th className="d-none d-md-table-cell">ID</th>
                 <th>Nombre</th>
                 <th>Apellido</th>
-                <th>Correo</th>
-                <th>Cargo</th>
-                <th>Teléfono</th>
-                <th>Rol</th>
+                <th className="d-none d-lg-table-cell">Correo</th>
+                <th className="d-none d-md-table-cell">Cargo</th>
+                <th className="d-none d-lg-table-cell">Teléfono</th>
+                <th className="d-none d-xl-table-cell">Rol</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {admins.map((a) => (
                 <tr key={a.id}>
-                  <td>{a.id}</td>
+                  <td className="d-none d-md-table-cell">{a.id}</td>
                   <td>{a.nombre}</td>
                   <td>{a.apellido}</td>
-                  <td>{a.correoElectronico}</td>
-                  <td>{a.cargo}</td>
-                  <td>{a.telefono}</td>
-                  <td>{rolNombre(a.rol)}</td>
+                  <td className="d-none d-lg-table-cell">{a.correoElectronico}</td>
+                  <td className="d-none d-md-table-cell">{a.cargo}</td>
+                  <td className="d-none d-lg-table-cell">{a.telefono}</td>
+                  <td className="d-none d-xl-table-cell">{rolNombre(a.rol)}</td>
                   <td>
                     <Button variant="outline-warning" size="sm" className="me-2" onClick={() => abrirEditar(a)}>
                       <Pencil size={14} />

@@ -11,8 +11,6 @@ import { useAuth } from '../../contexts/authcontext';
 import Spinner from '../../components/ui/Spinner';
 import FormField from '../../components/ui/FormField';
 
-// ── Schema ────────────────────────────────────────────────────────────────────
-
 const schema = z.object({
   nombre: z.string().min(1, 'Requerido'),
   apellido: z.string().min(1, 'Requerido'),
@@ -41,8 +39,6 @@ const fromYMD = (value?: string): Date | null => {
   return new Date(y, m - 1, d);
 };
 
-// ── Página ────────────────────────────────────────────────────────────────────
-
 const PerfilPacientePage = () => {
   const navigate = useNavigate();
   const { usuario } = useAuth();
@@ -56,23 +52,20 @@ const PerfilPacientePage = () => {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-  });
+  } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
-  // Populate form once data loads
   useEffect(() => {
     if (paciente) {
       reset({
         nombre: paciente.nombre,
         apellido: paciente.apellido,
         correoElectronico: paciente.correoElectronico,
-        edad: paciente.edad,
-        telefono: paciente.telefono,
-        sexo: paciente.sexo,
+        edad: paciente.edad ?? 0,
+        telefono: paciente.telefono ?? '',
+        sexo: paciente.sexo ?? '',
         fechaDeNacimiento: paciente.fechaDeNacimiento?.split('T')[0] ?? '',
-        aseguradora: paciente.aseguradora,
-        estadoDeSalud: paciente.estadoDeSalud,
+        aseguradora: paciente.aseguradora ?? '',
+        estadoDeSalud: paciente.estadoDeSalud ?? '',
       });
     }
   }, [paciente, reset]);
@@ -81,16 +74,12 @@ const PerfilPacientePage = () => {
     if (!paciente) return;
     actualizar.mutate({
       id: paciente.id,
-      data: {
-        ...values,
-        fechaDeRegistro: paciente.fechaDeRegistro,
-        rol: paciente.rol,
-      },
+      data: { ...values, rol: paciente.rol, fechaDeRegistro: paciente.fechaDeRegistro },
     });
   };
 
   if (isLoading) return <Spinner />;
-  if (isError) return <div className="alert alert-danger m-4">{(error as Error).message}</div>;
+  if (isError) return <div className="alert alert-danger m-4">{String(error instanceof Error ? error.message : error)}</div>;
   if (!paciente) return null;
 
   return (
@@ -118,7 +107,6 @@ const PerfilPacientePage = () => {
         </div>
       </div>
 
-      {/* Info de sólo lectura */}
       <Card className="mb-4 border-0 bg-light">
         <Card.Body className="py-3">
           <Row className="g-2 text-muted small">
@@ -153,21 +141,13 @@ const PerfilPacientePage = () => {
             </Row>
 
             <FormField label="Correo electrónico" error={errors.correoElectronico}>
-              <Form.Control
-                type="email"
-                isInvalid={!!errors.correoElectronico}
-                {...register('correoElectronico')}
-              />
+              <Form.Control type="email" isInvalid={!!errors.correoElectronico} {...register('correoElectronico')} />
             </FormField>
 
             <Row>
               <Col md={4}>
                 <FormField label="Edad" error={errors.edad}>
-                  <Form.Control
-                    type="number"
-                    isInvalid={!!errors.edad}
-                    {...register('edad', { valueAsNumber: true })}
-                  />
+                  <Form.Control type="number" isInvalid={!!errors.edad} {...register('edad', { valueAsNumber: true })} />
                 </FormField>
               </Col>
               <Col md={4}>

@@ -43,6 +43,7 @@ const schema = z.object({
   telefono: z.string().min(7, 'El teléfono debe tener al menos 7 dígitos'),
   sexo: z.string().min(1, 'El sexo es requerido'),
   aseguradora: z.string().min(1, 'La aseguradora es requerida'),
+  estadoDeSalud: z.string().min(1, 'El estado de salud es requerido'),
 });
 
 type SignUpFormValues = z.infer<typeof schema>;
@@ -60,12 +61,9 @@ const SignUpPage = () => {
   const { mutate, isPending } = useMutation({
     mutationFn: (values: SignUpFormValues) => {
       const edad = calcularEdad(values.fechaDeNacimiento);
-      const fechaDeRegistro = new Date().toISOString().split('T')[0];
       return createPaciente({
         ...values,
         edad,
-        fechaDeRegistro,
-        estadoDeSalud: 'Saludable',
         rol: 4,
       });
     },
@@ -179,6 +177,13 @@ const SignUpPage = () => {
               </FormField>
             </Col>
           </Row>
+          <FormField label="Estado de salud" error={errors.estadoDeSalud}>
+            <Form.Control
+              placeholder="Ej: Bueno, Regular, Excelente"
+              isInvalid={!!errors.estadoDeSalud}
+              {...register('estadoDeSalud')}
+            />
+          </FormField>
           <div className="d-grid gap-2">
             <Button type="submit" variant="primary" id="loginBtn" disabled={isPending}>
               {isPending ? (
