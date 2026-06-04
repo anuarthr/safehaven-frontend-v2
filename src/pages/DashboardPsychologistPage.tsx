@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/authcontext';
 const DashboardPsychologistPage = () => {
   const navigate = useNavigate();
   const { usuario } = useAuth();
-  const esPsicologo = usuario?.rol === 2;
+  const esPsicologo = usuario?.rol.id === 2;
 
   return (
     <Container className="py-4">

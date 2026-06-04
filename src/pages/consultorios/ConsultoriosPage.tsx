@@ -43,11 +43,21 @@ const ConsultorioForm = ({ valores, onSubmit, cargando, onCancelar }: Consultori
     formState: { errors },
   } = useForm<ConsultorioFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: valores ?? { activo: true },
+    defaultValues: valores
+      ? {
+          nombre: valores.nombre,
+          ubicacion: valores.ubicacion ?? '',
+          tipo: valores.tipo ?? '',
+          capacidad: valores.capacidad ?? 1,
+          horarioDeApertura: valores.horarioDeApertura ?? '',
+          horarioDeCierre: valores.horarioDeCierre ?? '',
+          activo: valores.activo,
+        }
+      : { activo: true },
   });
 
   return (
-    <Form onSubmit={handleSubmit(onSubmit)} noValidate>
+    <Form onSubmit={handleSubmit((v) => onSubmit(v as ConsultorioDto))} noValidate>
       <Row>
         <Col md={6}>
           <FormField label="Nombre" error={errors.nombre}>

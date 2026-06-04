@@ -17,7 +17,7 @@ import ConfirmModal from '../../components/ui/ConfirmModal';
 import FormField from '../../components/ui/FormField';
 import type { Paciente, RegistroPacienteDto, ActualizarPacienteDto } from '../../types';
 
-// ── Schemas ──────────────────────────────────────────────────────────────────
+// ── Schema ────────────────────────────────────────────────────────────────────
 
 const schema = z.object({
   nombre: z.string().min(1, 'Requerido'),
@@ -29,7 +29,6 @@ const schema = z.object({
   fechaDeNacimiento: z.string().min(1, 'Requerido'),
   aseguradora: z.string().min(1, 'Requerido'),
   estadoDeSalud: z.string().min(1, 'Requerido'),
-  fechaDeRegistro: z.string().min(1, 'Requerido'),
   password: z.string().optional(),
 });
 
@@ -48,8 +47,6 @@ const fromYMD = (value?: string): Date | null => {
   if ([y, m, d].some((n) => Number.isNaN(n))) return null;
   return new Date(y, m - 1, d);
 };
-
-// ── Tipos ─────────────────────────────────────────────────────────────────────
 
 type Modo = 'crear' | 'editar';
 
@@ -74,11 +71,17 @@ const PacienteForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Pacient
     resolver: zodResolver(schema),
     defaultValues: valores
       ? {
-          ...valores,
-          fechaDeRegistro: valores.fechaDeRegistro?.split('T')[0] ?? '',
+          nombre: valores.nombre,
+          apellido: valores.apellido,
+          correoElectronico: valores.correoElectronico,
+          edad: valores.edad ?? 0,
+          telefono: valores.telefono ?? '',
+          sexo: valores.sexo ?? '',
           fechaDeNacimiento: valores.fechaDeNacimiento?.split('T')[0] ?? '',
+          aseguradora: valores.aseguradora ?? '',
+          estadoDeSalud: valores.estadoDeSalud ?? '',
         }
-      : { estadoDeSalud: 'Saludable', fechaDeRegistro: new Date().toISOString().split('T')[0] },
+      : { estadoDeSalud: 'Bueno' },
   });
 
   const handleFormSubmit = (values: FormValues) => {
@@ -88,10 +91,14 @@ const PacienteForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Pacient
         return;
       }
       const { password, ...rest } = values;
-      onSubmit({ ...rest, rol: 4, password } as RegistroPacienteDto);
+      onSubmit({ ...rest, password, rol: 4 } as RegistroPacienteDto);
     } else {
       const { password: _pw, ...rest } = values;
-      onSubmit({ ...rest, rol: valores?.rol ?? 4 } as ActualizarPacienteDto);
+      onSubmit({
+        ...rest,
+        rol: valores?.rol ?? null,
+        fechaDeRegistro: valores?.fechaDeRegistro ?? null,
+      } as ActualizarPacienteDto);
     }
   };
 
@@ -170,42 +177,14 @@ const PacienteForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Pacient
           </FormField>
         </Col>
         <Col md={6}>
-          <FormField label="Fecha de registro" error={errors.fechaDeRegistro}>
-            <Controller
-              control={control}
-              name="fechaDeRegistro"
-              render={({ field }) => (
-                <Calendar
-                  value={fromYMD(field.value)}
-                  onChange={(e) => {
-                    const date = e.value instanceof Date ? e.value : null;
-                    field.onChange(date ? toYMD(date) : '');
-                  }}
-                  dateFormat="dd/mm/yy"
-                  placeholder="Selecciona fecha"
-                  maxDate={new Date()}
-                  className={errors.fechaDeRegistro ? 'p-invalid w-100' : 'w-100'}
-                  inputClassName="form-control"
-                  showIcon
-                  showButtonBar
-                />
-              )}
-            />
-          </FormField>
-        </Col>
-      </Row>
-      <Row>
-        <Col md={6}>
           <FormField label="Aseguradora" error={errors.aseguradora}>
             <Form.Control isInvalid={!!errors.aseguradora} {...register('aseguradora')} />
           </FormField>
         </Col>
-        <Col md={6}>
-          <FormField label="Estado de salud" error={errors.estadoDeSalud}>
-            <Form.Control isInvalid={!!errors.estadoDeSalud} {...register('estadoDeSalud')} />
-          </FormField>
-        </Col>
       </Row>
+      <FormField label="Estado de salud" error={errors.estadoDeSalud}>
+        <Form.Control isInvalid={!!errors.estadoDeSalud} {...register('estadoDeSalud')} />
+      </FormField>
       <div className="d-flex justify-content-end gap-2 mt-3">
         <Button variant="secondary" onClick={onCancelar} disabled={cargando}>Cancelar</Button>
         <Button type="submit" variant="primary" disabled={cargando}>
@@ -267,40 +246,31 @@ const PacientesPage = () => {
           <Table striped bordered hover>
             <thead className="table-dark">
               <tr>
-                <th>ID</th>
+                <th className="d-none d-md-table-cell">ID</th>
                 <th>Nombre</th>
                 <th>Apellido</th>
-                <th>Correo</th>
-                <th>Teléfono</th>
-                <th>Aseguradora</th>
-                <th>Estado de salud</th>
+                <th className="d-none d-lg-table-cell">Correo</th>
+                <th className="d-none d-md-table-cell">Teléfono</th>
+                <th className="d-none d-lg-table-cell">Aseguradora</th>
+                <th className="d-none d-xl-table-cell">Estado de salud</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {pacientes.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.id}</td>
+                  <td className="d-none d-md-table-cell">{p.id}</td>
                   <td>{p.nombre}</td>
                   <td>{p.apellido}</td>
-                  <td>{p.correoElectronico}</td>
-                  <td>{p.telefono}</td>
-                  <td>{p.aseguradora}</td>
-                  <td>{p.estadoDeSalud}</td>
+                  <td className="d-none d-lg-table-cell">{p.correoElectronico}</td>
+                  <td className="d-none d-md-table-cell">{p.telefono}</td>
+                  <td className="d-none d-lg-table-cell">{p.aseguradora}</td>
+                  <td className="d-none d-xl-table-cell">{p.estadoDeSalud}</td>
                   <td>
-                    <Button
-                      variant="outline-warning"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => abrirEditar(p)}
-                    >
+                    <Button variant="outline-warning" size="sm" className="me-2" onClick={() => abrirEditar(p)}>
                       <Pencil size={14} />
                     </Button>
-                    <Button
-                      variant="outline-danger"
-                      size="sm"
-                      onClick={() => setIdEliminar(p.id)}
-                    >
+                    <Button variant="outline-danger" size="sm" onClick={() => setIdEliminar(p.id)}>
                       <Trash2 size={14} />
                     </Button>
                   </td>
@@ -311,7 +281,6 @@ const PacientesPage = () => {
         </div>
       )}
 
-      {/* Modal crear/editar */}
       <Modal show={modalAbierto} onHide={cerrarModal} size="lg" centered>
         <Modal.Header closeButton>
           <Modal.Title>{modo === 'crear' ? 'Nuevo paciente' : 'Editar paciente'}</Modal.Title>
@@ -327,7 +296,6 @@ const PacientesPage = () => {
         </Modal.Body>
       </Modal>
 
-      {/* Modal confirmación eliminar */}
       <ConfirmModal
         show={idEliminar !== null}
         mensaje={`¿Desea eliminar el paciente con ID ${idEliminar}?`}

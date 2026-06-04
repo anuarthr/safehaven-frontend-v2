@@ -23,13 +23,13 @@ const ROL_PACIENTE = 4;
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, isAuthenticated, usuario } = useAuth();
+  const { login, isAuthenticated, isLoading, usuario } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated && usuario) {
-      navigate(usuario.rol === ROL_PACIENTE ? '/dashboard' : '/dashboard-psicologo');
+    if (!isLoading && isAuthenticated && usuario) {
+      navigate(usuario.rol.id === ROL_PACIENTE ? '/dashboard' : '/dashboard-psicologo');
     }
-  }, [isAuthenticated, usuario, navigate]);
+  }, [isLoading, isAuthenticated, usuario, navigate]);
 
   const {
     register,
@@ -42,7 +42,7 @@ const LoginPage = () => {
     onSuccess: (data) => {
       login(data);
       toast.success(`Bienvenido, ${data.nombre}`);
-      navigate(data.rol === ROL_PACIENTE ? '/dashboard' : '/dashboard-psicologo');
+      navigate(data.rol.id === ROL_PACIENTE ? '/dashboard' : '/dashboard-psicologo');
     },
     onError: (error: Error) => toast.error(error.message),
   });

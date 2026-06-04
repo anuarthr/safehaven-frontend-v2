@@ -13,7 +13,6 @@ import {
   useUpdatePsicologo,
   useDeletePsicologo,
 } from '../../hooks/usePsicologos';
-import { useRoles } from '../../hooks/useRoles';
 import Spinner from '../../components/ui/Spinner';
 import EmptyState from '../../components/ui/EmptyState';
 import ConfirmModal from '../../components/ui/ConfirmModal';
@@ -73,7 +72,18 @@ const PsicologoForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Psicol
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: valores
-      ? { ...valores, fechaDeNacimiento: valores.fechaDeNacimiento?.split('T')[0] ?? '' }
+      ? {
+          nombre: valores.nombre,
+          apellido: valores.apellido,
+          correoElectronico: valores.correoElectronico,
+          edad: valores.edad ?? 0,
+          telefono: valores.telefono ?? '',
+          sexo: valores.sexo ?? '',
+          fechaDeNacimiento: valores.fechaDeNacimiento?.split('T')[0] ?? '',
+          especialidad: valores.especialidad ?? '',
+          anosDeExperiencia: valores.anosDeExperiencia ?? 0,
+          horarioDeAtencion: valores.horarioDeAtencion ?? '',
+        }
       : undefined,
   });
 
@@ -84,10 +94,10 @@ const PsicologoForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Psicol
         return;
       }
       const { password, ...rest } = values;
-      onSubmit({ ...rest, rol: 2, password } as RegistroPsicologoDto);
+      onSubmit({ ...rest, password, rol: 3 } as RegistroPsicologoDto);
     } else {
       const { password: _pw, ...rest } = values;
-      onSubmit({ ...rest, rol: valores?.rol ?? 2 } as ActualizarPsicologoDto);
+      onSubmit({ ...rest, rol: valores?.rol ?? 3 } as ActualizarPsicologoDto);
     }
   };
 
@@ -200,13 +210,9 @@ const PsicologoForm = ({ modo, valores, onSubmit, cargando, onCancelar }: Psicol
 const PsicologosPage = () => {
   const navigate = useNavigate();
   const { data: psicologos, isLoading, isError, error } = usePsicologos();
-  const { data: roles } = useRoles();
   const { usuario } = useAuth();
-  const nombreRolUsuario = roles
-    ?.find((r) => r.id === usuario?.rol)
-    ?.nombre?.toLowerCase();
-  const esAdministrador = (nombreRolUsuario?.includes('admin') ?? false) || usuario?.rol === 1;
-  const rutaVolver = usuario?.rol === 4 ? '/dashboard' : '/dashboard-psicologo';
+  const esAdministrador = usuario?.rol.id === 1;
+  const rutaVolver = usuario?.rol.id === 4 ? '/dashboard' : '/dashboard-psicologo';
 
   const crear = useCreatePsicologo();
   const actualizar = useUpdatePsicologo();
@@ -275,26 +281,26 @@ const PsicologosPage = () => {
               <Table striped hover className="mb-0 align-middle">
                 <thead className="table-light">
               <tr>
-                <th>ID</th>
+                <th className="d-none d-md-table-cell">ID</th>
                 <th>Nombre</th>
                 <th>Apellido</th>
-                <th>Correo</th>
+                <th className="d-none d-lg-table-cell">Correo</th>
                 <th>Especialidad</th>
-                <th>Experiencia</th>
-                <th>Horario</th>
+                <th className="d-none d-md-table-cell">Experiencia</th>
+                <th className="d-none d-lg-table-cell">Horario</th>
                 {esAdministrador && <th>Acciones</th>}
               </tr>
                 </thead>
                 <tbody>
               {psicologos.map((p) => (
                 <tr key={p.id}>
-                  <td className="fw-semibold">#{p.id}</td>
+                  <td className="d-none d-md-table-cell fw-semibold">#{p.id}</td>
                   <td>{p.nombre}</td>
                   <td>{p.apellido}</td>
-                  <td>{p.correoElectronico}</td>
+                  <td className="d-none d-lg-table-cell">{p.correoElectronico}</td>
                   <td>{p.especialidad}</td>
-                  <td>{p.anosDeExperiencia} años</td>
-                  <td>{p.horarioDeAtencion}</td>
+                  <td className="d-none d-md-table-cell">{p.anosDeExperiencia} años</td>
+                  <td className="d-none d-lg-table-cell">{p.horarioDeAtencion}</td>
                   {esAdministrador && (
                     <td>
                       <Button variant="outline-warning" size="sm" className="me-2" onClick={() => abrirEditar(p)}>
